@@ -7,11 +7,27 @@ root = tk.Tk()
 root.title("RoyalReads Book management System - 100500501")
 root.geometry("700x400")
 
-# Creating tkinter pages
+# Defining page functions
 
-pages = {
-    "home" : "packHomePage()" 
-}
+def packViewBooksPage():
+
+    viewFrame = tk.Frame(root)
+
+    # Establishing Columns
+    bookTree = ttk.Treeview(viewFrame, columns=("BookID", "Title", "Price", "Category"), show="headings")
+    bookTree.heading("BookID", text="Book ID")
+    bookTree.heading("Title", text="Book Title")
+    bookTree.heading("Price", text="Price")
+    bookTree.heading("Category", text="Category")
+
+    # Establishing Styles
+    bookTree.column("BookID", width=50, anchor="center")
+    bookTree.column("Title", width=250, anchor="w") 
+    bookTree.column("Price", width=80, anchor="center")
+    bookTree.column("Category", width=120, anchor="w")
+
+    bookTree.pack(fill="both", expand=True)
+    viewFrame.pack(fill="both", expand=True, side="top")
 
 class navButtons:
     def __init__(self, textContent, pageName):
@@ -20,7 +36,7 @@ class navButtons:
     def parse(self):
         self.button.pack(side="left", pady=5, padx=5)
 
-# Defining Functions
+# Defining helper functions
 
 def flushPage(frame):
     # frame -> Indicates what tkinter frame to clear
@@ -39,7 +55,12 @@ def packNavBar():
     navbar.pack(side="top", fill="x", expand=False)
 
     homeBtn = navButtons("Home", "home").parse()
-    viewBooksBtn = navButtons("View Books", "viewBooks").parse()
+    viewBooksBtn = navButtons("View Books", "home").parse()
+
+# Creating tkinter pages
+pages = {
+    "home" : packViewBooksPage
+}
 
 def setPageView(pageName):
     # Handles logic required to ensure safe page switch
@@ -48,7 +69,7 @@ def setPageView(pageName):
 
     flushPage(root)
     packNavBar()
-    #pages(pageName.lower()) # TODO uncomment once pages established
+    pages[pageName.lower()]()
 
 # Startup actions 
 
