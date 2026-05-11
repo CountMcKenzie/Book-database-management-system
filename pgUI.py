@@ -1,6 +1,7 @@
 from tkinter import ttk
 import tkinter as tk
 import psycopg2
+import json
 
 # Creating window and properties
 
@@ -17,22 +18,7 @@ def packViewBooksPage():
     viewFrame = tk.Frame(root)
     viewFrame.pack(fill="both", expand=True)
 
-    tk.Label(viewFrame, text="Book Inventory Management", font=("Arial", 14, "bold")).pack(pady=5)
-
-    inputFrame = tk.Frame(viewFrame)
-    inputFrame.pack(fill="x", padx=20, pady=5)
-
-    tk.Label(inputFrame, text="Book ID:").pack(side="left")
-    bookIdEntry = tk.Entry(inputFrame, width=10)
-    bookIdEntry.pack(side="left", padx=5)
-
-    tk.Label(inputFrame, text="Publisher:").pack(side="left", padx=(10, 0))
-    publisherNameEntry = tk.Entry(inputFrame, width=15)
-    publisherNameEntry.pack(side="left", padx=5)
-
-    tk.Label(inputFrame, text="Disc %:").pack(side="left", padx=(10, 0))
-    discountPercentEntry = tk.Entry(inputFrame, width=5)
-    discountPercentEntry.pack(side="left", padx=5)
+    tk.Label(viewFrame, text="Book Inventory Management", font=("Arial", 15)).pack(pady=5)
 
     bookTree = ttk.Treeview(viewFrame, columns=("bookID", "title", "price", "categoryID", "publisherID"), show="headings")
     
@@ -56,23 +42,14 @@ def packViewBooksPage():
     btnFrame = tk.Frame(viewFrame)
     btnFrame.pack(fill="x", padx=20, pady=10)
 
-    publisherReportBtn = tk.Button(btnFrame, text="Publisher Order Report")
-    publisherReportBtn.pack(side="left", padx=5)
-
     bookHistoryBtn = tk.Button(btnFrame, command=lambda:bookOrderHistoryReportTL(viewFrame), text="View Book History")
     bookHistoryBtn.pack(side="left", padx=5)
 
-    searchBooksBtn = tk.Button(btnFrame, text="Search Books")
-    searchBooksBtn.pack(side="left", padx=5)
-
-    applyDiscountBtn = tk.Button(btnFrame, text="Show Discount Results")
-    applyDiscountBtn.pack(side="right", padx=5)
-
-def publishersPage():
+def shopAndPublishersPage():
     viewFrame = tk.Frame(root)
     viewFrame.pack(fill="both", expand=True)
 
-    tk.Label(viewFrame, text="Entity Management (Shops & Publishers)", font=("Arial", 14, "bold")).pack(pady=5)
+    tk.Label(viewFrame, text="Shops & Publishers", font=("Arial", 15)).pack(pady=5)
 
     cur.execute("SELECT * FROM publisher LIMIT 250")
     publisherRows = cur.fetchall()
@@ -81,7 +58,7 @@ def publishersPage():
     shopRows = cur.fetchall()
 
     # Top Section: Shops
-    tk.Label(viewFrame, text="Registered Shops:", font=("Arial", 11, "italic")).pack(pady=(5, 0))
+    tk.Label(viewFrame, text="Registered Shops:", font=("Arial", 16)).pack(pady=(5, 0))
     shopTree = ttk.Treeview(viewFrame, columns=("shopID", "shopName"), show="headings", height=5)
     shopTree.heading("shopID", text="Shop ID")
     shopTree.heading("shopName", text="Shop Name")
@@ -93,7 +70,7 @@ def publishersPage():
         shopTree.insert("", "end", values=row)
 
     # Bottom Section: Publishers
-    tk.Label(viewFrame, text="Registered Publishers:", font=("Arial", 11, "italic")).pack(pady=(10, 0))
+    tk.Label(viewFrame, text="Registered Publishers:", font=("Arial", 16)).pack(pady=(10, 0))
     publisherTree = ttk.Treeview(viewFrame, columns=("pubID", "pubName"), show="headings", height=5)
     publisherTree.heading("pubID", text="Publisher ID")
     publisherTree.heading("pubName", text="Publisher Name")
@@ -104,14 +81,11 @@ def publishersPage():
     for row in publisherRows:
         publisherTree.insert("", "end", values=row)
 
-    btnFrame = tk.Frame(viewFrame)
-    btnFrame.pack(fill="x", padx=20, pady=10)
+    # Button Frame
 
-    addShopBtn = tk.Button(btnFrame, text="Add New Shop")
-    addShopBtn.pack(side="left", padx=5)
+    bttnFrame = tk.Frame(viewFrame).pack(fill="x", padx=20, pady=10)
 
-    addPublisherBtn = tk.Button(btnFrame, text="Add New Publisher")
-    addPublisherBtn.pack(side="left", padx=5)
+    tk.Button(bttnFrame, text="Publisher Report", command=lambda:publisherReportTL(bttnFrame)).pack(side="left", padx=5, pady=10)
 
 def packOrdersPage():
 
@@ -139,7 +113,7 @@ def packOrdersPage():
 
     cur.execute("SELECT * FROM shoporder LIMIT 250")
 
-    tk.Label(viewFrame, text="Order Management", font=("Arial", 14, "bold")).pack(pady=5)
+    tk.Label(viewFrame, text="Order Management", font=("Arial", 16)).pack(pady=5)
 
     inputFrame = tk.Frame(viewFrame)
     inputFrame.pack(fill="x", padx=20, pady=5)
@@ -172,9 +146,9 @@ def packOrdersPage():
     shopOrderTree.pack(fill="x", padx=20, pady=5)
 
     for row in cur.fetchall():
-        shopOrderTree.insert("", "end", values=row)
+        shopOrderTree.insert("", "end", values=(row[0], row[1], row[2], row[3], "Open" if row[4] is None else row[4]))
 
-    tk.Label(viewFrame, text="Items in Selected Order:", font=("Arial", 14, "bold")).pack(pady=(10, 5))
+    tk.Label(viewFrame, text="Items in Selected Order:", font=("Arial", 16)).pack(pady=(10, 5))
 
     orderLineTree = ttk.Treeview(viewFrame, columns=("bookID", "qty", "unitPrice", "lineTotal"), show="headings")
     
@@ -188,20 +162,13 @@ def packOrdersPage():
 
     orderLineTree.pack(fill="both", expand=True, padx=20, pady=10)
 
-    # --- Button Frame for Transaction Capabilities ---
     btnFrame = tk.Frame(viewFrame)
     btnFrame.pack(fill="x", padx=20, pady=10)
 
-    # Trans 8 & 10: Logic for adding lines to open orders
-    addOrderLineBtn = tk.Button(btnFrame, text="Add Book to Order")
+    addOrderLineBtn = tk.Button(btnFrame, command=lambda:addOrderLineTL(viewFrame), text="Add Book to Order")
     addOrderLineBtn.pack(side="left", padx=5)
 
-    # Search functionality
-    searchOrderBtn = tk.Button(btnFrame, text="Search Order")
-    searchOrderBtn.pack(side="left", padx=5)
-
-    # Trans 9: Logic for dispatching
-    dispatchOrderBtn = tk.Button(btnFrame, text="Mark as Dispatched")
+    dispatchOrderBtn = tk.Button(btnFrame, command=lambda:dispatchOrderTL(viewFrame), text="Mark as Dispatched")
     dispatchOrderBtn.pack(side="right", padx=5)
 
     return viewFrame
@@ -213,7 +180,7 @@ def categoriesPage():
 
     cur.execute("SELECT * FROM category LIMIT 250")
 
-    tk.Label(viewFrame, text="Category Management", font=("Arial", 14, "bold")).pack(pady=5)
+    tk.Label(viewFrame, text="Category Management", font=("Arial", 16)).pack(pady=5)
 
     inputFrame = tk.Frame(viewFrame)
     inputFrame.pack(fill="x", padx=20, pady=5)
@@ -256,8 +223,7 @@ def categoriesPage():
     ttk.Button(btnFrame, command=lambda:addCategoryTL(viewFrame), text="Create New Category").pack(side="left", padx=2)  
     ttk.Button(btnFrame, command=lambda:removeCategoryTL(viewFrame), text="Remove Category").pack(side="left", padx=2)
     ttk.Button(btnFrame, command=lambda:categoryReportTL(viewFrame), text="Category Summary Report").pack(side="left", padx=2)
-    ttk.Button(btnFrame, text="Show Discount Results").pack(side="right", padx=2)
-    ttk.Button(btnFrame, text="Search/Filter Categories").pack(side="left", padx=2)
+    ttk.Button(btnFrame, command=lambda:categoryDiscountReportTL(viewFrame), text="Show Discount Report").pack(side="left", padx=2)
 
     return viewFrame
 
@@ -267,7 +233,7 @@ def staffPage():
 
     cur.execute("SELECT * FROM salesrep LIMIT 250")
 
-    tk.Label(viewFrame, text="Sales Staff Management", font=("Arial", 14, "bold")).pack(pady=5)
+    tk.Label(viewFrame, text="Sales Staff Management", font=("Arial", 16)).pack(pady=5)
 
     inputFrame = tk.Frame(viewFrame)
     inputFrame.pack(fill="x", padx=20, pady=5)
@@ -296,11 +262,9 @@ def staffPage():
     btnFrame = tk.Frame(viewFrame)
     btnFrame.pack(fill="x", padx=20, pady=10)
 
-    addSalesRepBtn = tk.Button(btnFrame, text="Add New Representative")
-    addSalesRepBtn.pack(side="left", padx=5)
+    repReportBtn = ttk.Button(btnFrame, command=lambda:generateSalesReportTL(viewFrame), text="Generate Rep Report")
+    repReportBtn.pack(side="left", padx=5)
 
-    removeSalesRepBtn = tk.Button(btnFrame, text="Remove Representative")
-    removeSalesRepBtn.pack(side="right", padx=5)
 
 class navButtons:
     def __init__(self, textContent, pageName):
@@ -309,121 +273,319 @@ class navButtons:
     def parse(self):
         self.button.pack(side="left", pady=5, padx=5)
 
-# Defining top-level functions
+# Defining top level functions
 
-def bookOrderHistoryReportTL(frame):
-    orderHistoryWindow = tk.Toplevel(frame)
-    orderHistoryWindow.title("Book Order History Report")
-    orderHistoryWindow.geometry("1000x650")
-    orderHistoryWindow.grab_set()
+def publisherReportTL(frame):
+    reportWindow = tk.Toplevel(frame)
+    reportWindow.title("Publisher Sales Report")
+    reportWindow.geometry("950x600")
 
-    tk.Label(orderHistoryWindow, text="Book Order History Report", font=("Arial", 16, "bold")).pack(pady=10)
+    tk.Label(reportWindow, text="Monthly Sales Report by Publisher", font=("Arial", 12, "bold")).pack(pady=15)
 
-    searchCriteriaFrame = tk.Frame(orderHistoryWindow)
-    searchCriteriaFrame.pack(pady=10)
+    inputFrame = tk.Frame(reportWindow)
+    inputFrame.pack(pady=5)
+
+    tk.Label(inputFrame, text="Enter Publisher Name:").pack(side="left", padx=5)
+    pubNameEntry = ttk.Entry(inputFrame, width=30)
+    pubNameEntry.pack(side="left", padx=5)
+
+    cols = ("year", "month", "bookid", "title", "numOrders", "totalQty", "orderValue", "retailValue")
+    reportTree = ttk.Treeview(reportWindow, columns=cols, show="headings")
     
-    tk.Label(searchCriteriaFrame, text="Enter Book Identification Number:").pack(side="left", padx=5)
-    bookIdentificationEntry = ttk.Entry(searchCriteriaFrame)
-    bookIdentificationEntry.pack(side="left", padx=5)
+    reportTree.heading("year", text="Year")
+    reportTree.heading("month", text="Month")
+    reportTree.heading("bookid", text="Book ID")
+    reportTree.heading("title", text="Title")
+    reportTree.heading("numOrders", text="Orders")
+    reportTree.heading("totalQty", text="Total Qty")
+    reportTree.heading("orderValue", text="Order Val (£)")
+    reportTree.heading("retailValue", text="Retail Val (£)")
 
-    columnIdentifiers = ("orderDate", "bookTitle", "standardPrice", "unitSellingPrice", "quantity", "totalOrderValue", "shopName")
-    orderHistoryTree = ttk.Treeview(orderHistoryWindow, columns=columnIdentifiers, show="headings")
+    for col in cols:
+        reportTree.column(col, width=90, anchor="center")
+    reportTree.column("title", width=200, anchor="w")
     
-    orderHistoryTree.heading("orderDate", text="Order Date")
-    orderHistoryTree.heading("bookTitle", text="Book Title")
-    orderHistoryTree.heading("standardPrice", text="Retail Price")
-    orderHistoryTree.heading("unitSellingPrice", text="Unit Sale Price")
-    orderHistoryTree.heading("quantity", text="Quantity")
-    orderHistoryTree.heading("totalOrderValue", text="Total Value")
-    orderHistoryTree.heading("shopName", text="Shop Name")
+    reportTree.pack(fill="both", expand=True, padx=20, pady=10)
 
-    orderHistoryTree.column("orderDate", width=110, anchor="center")
-    orderHistoryTree.column("bookTitle", width=200, anchor="w")
-    orderHistoryTree.column("standardPrice", width=100, anchor="e")
-    orderHistoryTree.column("unitSellingPrice", width=100, anchor="e")
-    orderHistoryTree.column("quantity", width=80, anchor="center")
-    orderHistoryTree.column("totalOrderValue", width=110, anchor="e")
-    orderHistoryTree.column("shopName", width=150, anchor="w")
-
-    orderHistoryTree.pack(fill="both", expand=True, padx=20, pady=5)
-
-    summaryInformationFrame = tk.Frame(orderHistoryWindow, relief="groove", bd=2)
-    summaryInformationFrame.pack(fill="x", padx=20, pady=15)
-    
-    totalCopiesOrderedLabel = tk.Label(summaryInformationFrame, text="Total Copies Ordered: 0", font=("Arial", 10, "bold"))
-    totalCopiesOrderedLabel.pack(side="left", padx=20)
-    
-    totalSellingValueLabel = tk.Label(summaryInformationFrame, text="Total Selling Value: £0.00", font=("Arial", 10, "bold"))
-    totalSellingValueLabel.pack(side="right", padx=20)
-
-    def executeReportGeneration():
-        targetBook = bookIdentificationEntry.get()
-        if not targetBook:
+    def executeReportQuery():
+        inputPubName = pubNameEntry.get()
+        if not inputPubName:
             return
 
-        for existingRow in orderHistoryTree.get_children():
-            orderHistoryTree.delete(existingRow)
+        # Clear existing data
+        reportTree.delete(*reportTree.get_children())
 
         try:
-            selectionQuery = """
+            query = """
+            WITH OrderDetails AS (
                 SELECT 
-                    shoporder.orderdate, 
-                    book.title, 
-                    book.price, 
-                    orderline.unitsellingprice, 
-                    orderline.quantity, 
-                    (orderline.unitsellingprice * orderline.quantity), 
-                    shop.name
-                FROM book
+                    EXTRACT(YEAR FROM shoporder.orderdate) AS order_year,
+                    EXTRACT(MONTH FROM shoporder.orderdate) AS order_month,
+                    book.bookid,
+                    book.title,
+                    book.price AS list_price,
+                    orderline.quantity,
+                    orderline.unitsellingprice,
+                    orderline.shoporderid
+                FROM publisher
+                JOIN book ON publisher.publisherid = book.publisherid
                 JOIN orderline ON book.bookid = orderline.bookid
                 JOIN shoporder ON orderline.shoporderid = shoporder.shoporderid
-                JOIN shop ON shoporder.shopid = shop.shopid
-                WHERE book.bookid = %s
-                ORDER BY shoporder.orderdate DESC
-            """ 
-            cur.execute(selectionQuery, (targetBook,))
-            historyResultRows = cur.fetchall()
+                WHERE publisher.name = %s
+            )
+            SELECT 
+                order_year,
+                order_month,
+                bookid,
+                title,
+                COUNT(shoporderid) AS total_orders,
+                SUM(quantity) AS total_quantity_sold,
+                SUM(quantity * unitsellingprice) AS actual_revenue,
+                SUM(quantity * list_price) AS potential_revenue
+            FROM OrderDetails
+            GROUP BY 
+                order_year, 
+                order_month, 
+                bookid, 
+                title
+            ORDER BY 
+                order_year DESC, 
+                order_month DESC, 
+                title ASC;
+            """
+            cur.execute(query, (inputPubName,))
+            reportRows = cur.fetchall()
 
-            for currentRow in historyResultRows:
-                # Formatting currency values
-                formattedStandardPrice = f"£{currentRow[2]:,.2f}"
-                formattedUnitSellingPrice = f"£{currentRow[3]:,.2f}"
-                formattedTotalOrderValue = f"£{currentRow[5]:,.2f}"
+            for row in reportRows:
+                displayData = (
+                    int(row[0]), 
+                    int(row[1]), 
+                    row[2], 
+                    row[3], 
+                    row[4], 
+                    row[5], 
+                    f"£{row[6]:,.2f}", 
+                    f"£{row[7]:,.2f}"
+                )
+                reportTree.insert("", tk.END, values=displayData)
+
+            if not reportRows:
+                print(f"No records found for Publisher: {inputPubName}")
+
+        except Exception as dbError:
+            print(f"Database Error during report generation: {dbError}")
+
+    submitButton = ttk.Button(inputFrame, text="Generate Report", command=executeReportQuery)
+    submitButton.pack(side="left", padx=10)
+
+    closeButton = ttk.Button(reportWindow, text="Close", command=reportWindow.destroy)
+    closeButton.pack(pady=10)
+
+def dispatchOrderTL(frame):
+    dispatchWindow = tk.Toplevel(frame)
+    dispatchWindow.title("Update Order Status")
+    dispatchWindow.geometry("400x250")
+    dispatchWindow.grab_set()
+
+    tk.Label(dispatchWindow, text="Dispatch Order Management", font=("Arial", 16)).pack(pady=15)
+
+    tk.Label(dispatchWindow, text="Enter Order ID to Dispatch:").pack()
+    orderIdEntry = ttk.Entry(dispatchWindow)
+    orderIdEntry.pack(pady=5)
+
+    def executeDispatchUpdate():
+        inputOrderId = orderIdEntry.get()
+        if not inputOrderId:
+            return
+
+        try:
+            query = """
+                UPDATE shoporder 
+                SET status = 'Dispatched' 
+                WHERE shoporder.shoporderid = %s
+            """
+            cur.execute(query, (inputOrderId,))
+            
+            if cur.rowcount == 0:
+                print(f"Update Failed: Order ID {inputOrderId} does not exist.")
+                connection.rollback()
+            else:
+                connection.commit()
+                print(f"Order {inputOrderId} successfully marked as Dispatched.")
+                setPageView("vieworders")
+
+        except Exception as dbError:
+            connection.rollback()
+            print(f"Database Error during dispatch: {dbError}")
+
+    submitButton = ttk.Button(dispatchWindow, text="Confirm Dispatch", command=executeDispatchUpdate)
+    submitButton.pack(pady=25)
+
+def categoryDiscountReportTL(frame):
+    discountReportWindow = tk.Toplevel(frame)
+    discountReportWindow.title("Category Discount Preview")
+    discountReportWindow.geometry("900x600")
+    discountReportWindow.grab_set()
+
+    tk.Label(discountReportWindow, text="Category Discount Preview Report", font=("Arial", 16)).pack(pady=10)
+
+    inputFrame = tk.Frame(discountReportWindow)
+    inputFrame.pack(pady=10)
+    
+    tk.Label(inputFrame, text="Category ID:").pack(side="left", padx=5)
+    categoryIdEntry = ttk.Entry(inputFrame, width=10)
+    categoryIdEntry.pack(side="left", padx=5)
+
+    tk.Label(inputFrame, text="Discount %:").pack(side="left", padx=5)
+    discountPercentEntry = ttk.Entry(inputFrame, width=10)
+    discountPercentEntry.pack(side="left", padx=5)
+
+    columnIdentifiers = ("bookId", "title", "publisherId", "standardPrice", "discountedPrice")
+    reportTree = ttk.Treeview(discountReportWindow, columns=columnIdentifiers, show="headings")
+    
+    reportTree.heading("bookId", text="Book ID")
+    reportTree.heading("title", text="Title")
+    reportTree.heading("publisherId", text="Publisher ID")
+    reportTree.heading("standardPrice", text="Standard Price")
+    reportTree.heading("discountedPrice", text="Discounted Price")
+
+    reportTree.column("bookId", width=100, anchor="center")
+    reportTree.column("title", width=250, anchor="w")
+    reportTree.column("publisherId", width=120, anchor="center")
+    reportTree.column("standardPrice", width=120, anchor="e")
+    reportTree.column("discountedPrice", width=120, anchor="e")
+
+    reportTree.pack(fill="both", expand=True, padx=20, pady=5)
+
+    def calculateDiscount():
+        inputCategory = categoryIdEntry.get()
+        inputDiscount = discountPercentEntry.get()
+
+        if not inputCategory or not inputDiscount:
+            return
+
+        for row in reportTree.get_children():
+            reportTree.delete(row)
+
+        try:
+            query = """
+                SELECT 
+                    book.bookid, 
+                    book.title, 
+                    book.publisherid, 
+                    book.price, 
+                    (book.price * (1 - (%s / 100.0)))
+                FROM book
+                WHERE book.categoryid = %s
+            """ 
+            cur.execute(query, (float(inputDiscount), inputCategory))
+            results = cur.fetchall()
+
+            for record in results:
+                formattedOldPrice = f"£{record[3]:,.2f}"
+                formattedNewPrice = f"£{record[4]:,.2f}"
                 
-                orderHistoryTree.insert("", tk.END, values=(
-                    currentRow[0], 
-                    currentRow[1], 
-                    formattedStandardPrice, 
-                    formattedUnitSellingPrice, 
-                    currentRow[4], 
-                    formattedTotalOrderValue, 
-                    currentRow[6]
+                reportTree.insert("", "end", values=(
+                    record[0], 
+                    record[1], 
+                    record[2], 
+                    formattedOldPrice, 
+                    formattedNewPrice
                 ))
 
-            summaryQuery = """
-                SELECT SUM(Quantity), SUM(UnitSellingPrice * Quantity) 
-                FROM OrderLine 
-                WHERE BookID = %s
+        except Exception as error:
+            connection.rollback()
+            print(f"Error calculating discounts: {error}")
+
+    calculateButton = ttk.Button(inputFrame, text="Preview Discount", command=calculateDiscount)
+    calculateButton.pack(side="left", padx=10)
+
+    closeButton = tk.Button(discountReportWindow, text="Close", command=discountReportWindow.destroy)
+    closeButton.pack(pady=10)
+
+def generateSalesReportTL(frame):
+    reportWindow = tk.Toplevel(frame)
+    reportWindow.title("Sales Representative Performance Report")
+    reportWindow.geometry("800x550")
+    reportWindow.grab_set()
+
+    tk.Label(reportWindow, text="Sales Representative Performance Report", font=("Arial", 16, "bold")).pack(pady=10)
+
+    searchCriteriaFrame = tk.Frame(reportWindow)
+    searchCriteriaFrame.pack(pady=10)
+    
+    tk.Label(searchCriteriaFrame, text="Start Date (YYYY-MM-DD):").pack(side="left", padx=5)
+    startDateEntry = ttk.Entry(searchCriteriaFrame, width=12)
+    startDateEntry.pack(side="left", padx=5)
+
+    tk.Label(searchCriteriaFrame, text="End Date (YYYY-MM-DD):").pack(side="left", padx=5)
+    endDateEntry = ttk.Entry(searchCriteriaFrame, width=12)
+    endDateEntry.pack(side="left", padx=5)
+
+    columnIdentifiers = ("repName", "totalUnits", "totalValue")
+    salesReportTree = ttk.Treeview(reportWindow, columns=columnIdentifiers, show="headings")
+    
+    salesReportTree.heading("repName", text="Representative Name")
+    salesReportTree.heading("totalUnits", text="Total Units Sold")
+    salesReportTree.heading("totalValue", text="Total Order Value")
+
+    salesReportTree.column("repName", width=250, anchor="w")
+    salesReportTree.column("totalUnits", width=150, anchor="center")
+    salesReportTree.column("totalValue", width=150, anchor="e")
+
+    salesReportTree.pack(fill="both", expand=True, padx=20, pady=5)
+
+    def executeReportGeneration():
+        inputStartDate = startDateEntry.get()
+        inputEndDate = endDateEntry.get()
+        
+        if not inputStartDate or not inputEndDate:
+            return
+
+        # Clear existing entries in the treeview before loading new data
+        for existingRow in salesReportTree.get_children():
+            salesReportTree.delete(existingRow)
+
+        try:
+            # L join ensures guys with no sales in the slot are still displayed
+            query = """
+                SELECT 
+                    salesrep.name,
+                    COALESCE(SUM(orderline.quantity), 0) AS totalUnitsSold,
+                    COALESCE(SUM(orderline.quantity * orderline.unitsellingprice), 0) AS totalOrderValue
+                FROM 
+                    salesrep
+                LEFT JOIN 
+                    shoporder ON salesrep.salesrepid = shoporder.salesrepid 
+                                 AND shoporder.orderdate >= %s 
+                                 AND shoporder.orderdate <= %s
+                LEFT JOIN 
+                    orderline ON shoporder.shoporderid = orderline.shoporderid
+                GROUP BY 
+                    salesrep.salesrepid, salesrep.name
+                ORDER BY 
+                    totalOrderValue DESC
             """
-            cur.execute(summaryQuery, (targetBook,))
-            summaryDataResult = cur.fetchone()
-            
-            # Extracting values with null handling
-            grandTotalCopies = summaryDataResult[0] if summaryDataResult[0] is not None else 0
-            grandTotalSellingValue = summaryDataResult[1] if summaryDataResult[1] is not None else 0.0
-            
-            # Updating summary labels
-            totalCopiesOrderedLabel.config(text=f"Total Copies Ordered: {grandTotalCopies}")
-            totalSellingValueLabel.config(text=f"Total Selling Value: £{grandTotalSellingValue:,.2f}")
+            cur.execute(query, (inputStartDate, inputEndDate))
+            reportResults = cur.fetchall()
+
+            for currentRow in reportResults:
+                formattedTotalOrderValue = f"£{currentRow[2]:,.2f}"
+                
+                salesReportTree.insert("", tk.END, values=(
+                    currentRow[0], 
+                    currentRow[1], 
+                    formattedTotalOrderValue
+                ))
 
         except Exception as databaseExecutionError:
             connection.rollback()
             print(f"Report Failure: {databaseExecutionError}")
 
-    generateReportButton = ttk.Button(searchCriteriaFrame, text="Generate History", command=executeReportGeneration)
-    generateReportButton.pack(side="left", padx=10)
+    generateReportButton = ttk.Button(searchCriteriaFrame, text="Generate Report", command=executeReportGeneration)
+    generateReportButton.pack(side="left", padx=15)
 
-    closeReportButton = tk.Button(orderHistoryWindow, text="Close Report", command=orderHistoryWindow.destroy)
+    closeReportButton = tk.Button(reportWindow, text="Close Report", command=reportWindow.destroy)
     closeReportButton.pack(pady=10)
 
 def categoryReportTL(frame):
@@ -431,7 +593,7 @@ def categoryReportTL(frame):
     reportWindow.title("Category Summary Report")
     reportWindow.geometry("600x500")
 
-    tk.Label(reportWindow, text="Category Summary Report", font=("Arial", 16, "bold")).pack(pady=10)
+    tk.Label(reportWindow, text="Category Summary Report", font=("Arial", 15)).pack(pady=10)
 
     reportTree = ttk.Treeview(reportWindow, columns=("catName", "bookCount", "avgPrice"), show="headings")
     reportTree.heading("catName", text="Category Name")
@@ -454,21 +616,19 @@ def categoryReportTL(frame):
     
     reportRows = cur.fetchall()
     for row in reportRows:
-        # Format price as currency string
         formattedPrice = f"£{row[2]:,.2f}" if row[2] is not None else "£0.00"
         reportTree.insert("", tk.END, values=(row[0], row[1], formattedPrice))
 
-    # Summary Line Query - Separate query for totals
     cur.execute("SELECT COUNT(bookid), AVG(price) FROM book")
     summaryData = cur.fetchone()
     totalTitles = summaryData[0]
     overallAvg = f"£{summaryData[1]:,.2f}" if summaryData[1] is not None else "£0.00"
 
-    # Summary Frame (Footer)
+
     summaryFrame = tk.Frame(reportWindow, relief="groove", bd=2)
     summaryFrame.pack(fill="x", padx=20, pady=15)
 
-    tk.Label(summaryFrame, text="TOTALS:", font=("Arial", 10, "bold")).pack(side="left", padx=10)
+    tk.Label(summaryFrame, text="TOTALS:", font=("Arial", 10)).pack(side="left", padx=10)
     tk.Label(summaryFrame, text=f"Total Book Titles: {totalTitles}").pack(side="left", padx=20)
     tk.Label(summaryFrame, text=f"Overall Average Price: {overallAvg}").pack(side="right", padx=20)
 
@@ -480,7 +640,7 @@ def addCategoryTL(frame):
     addCategoryWindow.geometry("400x350")
     addCategoryWindow.grab_set()
 
-    headerLabel = tk.Label(addCategoryWindow, text="Enter Category Information", font=("Arial", 12, "bold"))
+    headerLabel = tk.Label(addCategoryWindow, text="Enter Category Information", font=("Arial", 16))
     headerLabel.pack(pady=15)
 
     categoryIdLabel = tk.Label(addCategoryWindow, text="Category ID:")
@@ -513,7 +673,7 @@ def addCategoryTL(frame):
             connection.rollback()
             return
 
-        addCategoryWindow.destroy()
+        setPageView("categories")
 
     submitButton = ttk.Button(addCategoryWindow, text="Submit Category", command=processCategorySubmission)
     submitButton.pack(pady=25)
@@ -524,7 +684,7 @@ def removeCategoryTL(frame):
     removeCategoryWindow.geometry("400x250")
     removeCategoryWindow.grab_set()
 
-    headerLabel = tk.Label(removeCategoryWindow, text="Delete Category Record", font=("Arial", 12, "bold"))
+    headerLabel = tk.Label(removeCategoryWindow, text="Delete Category Record", font=("Arial", 16))
     headerLabel.pack(pady=15)
 
     categoryIdLabel = tk.Label(removeCategoryWindow, text="Enter Category ID to Remove:")
@@ -539,32 +699,228 @@ def removeCategoryTL(frame):
             return
 
         try:
-            removalQuery = "DELETE FROM Category WHERE CategoryID = %s"
-            cur.execute(removalQuery, (targetCategoryId,))
+            query = "DELETE FROM Category WHERE CategoryID = %s"
+            cur.execute(query, (targetCategoryId,))
             connection.commit()
         except:
             connection.rollback()
             return
 
-        removeCategoryWindow.destroy()
+        setPageView("categories")
 
     submitButton = ttk.Button(removeCategoryWindow, text="Remove Record", command=processCategoryRemoval)
     submitButton.pack(pady=25)
 
+def addOrderLineTL(frame):
+    addLineWindow = tk.Toplevel(frame)
+    addLineWindow.title("Add Line to Order")
+    addLineWindow.geometry("400x450")
+    addLineWindow.grab_set()
+
+    tk.Label(addLineWindow, text="New Order Line Entry").pack(pady=15)
+
+    tk.Label(addLineWindow, text="Order ID:").pack()
+    orderIdEntry = ttk.Entry(addLineWindow)
+    orderIdEntry.pack(pady=5)
+
+    tk.Label(addLineWindow, text="Book ID:").pack()
+    bookIdEntry = ttk.Entry(addLineWindow)
+    bookIdEntry.pack(pady=5)
+
+    tk.Label(addLineWindow, text="Quantity to Add:").pack()
+    quantityEntry = ttk.Entry(addLineWindow)
+    quantityEntry.pack(pady=5)
+
+    def processLineSubmission():
+        targetOrder = orderIdEntry.get()
+        targetBook = bookIdEntry.get()
+        qtyToAdd = quantityEntry.get()
+
+        if not targetOrder or not targetBook or not qtyToAdd:
+            return
+
+        try:
+            query = "SELECT shoporder.status FROM shoporder WHERE shoporder.shoporderid = %s"
+            cur.execute(query, (targetOrder,))
+            orderStatusResult = cur.fetchone()
+
+            if not orderStatusResult:
+                print("Error: Order ID not found.")
+                return
+            
+            currentStatus = orderStatusResult[0] if orderStatusResult[0] is not None else "Open"
+
+            if currentStatus.lower() != "open":
+                print(f"Transaction Blocked: Cannot add lines to a '{currentStatus}' order.")
+                return
+
+            # Check if this book is already in this order
+            query = """
+                SELECT orderline.quantity 
+                FROM orderline 
+                WHERE orderline.shoporderid = %s AND orderline.bookid = %s
+            """
+            cur.execute(query, (targetOrder, targetBook))
+            existingLine = cur.fetchone()
+
+            if existingLine:
+                # If book exists, update the quantity
+                query = """
+                    UPDATE orderline 
+                    SET quantity = orderline.quantity + %s 
+                    WHERE orderline.shoporderid = %s AND orderline.bookid = %s
+                """
+                cur.execute(query, (qtyToAdd, targetOrder, targetBook))
+                print(f"Updated quantity for Book {targetBook} in Order {targetOrder}.")
+            else:
+                # If book does not exist, insert a new line pull price from book table
+                query = """
+                    INSERT INTO orderline (shoporderid, quantity, bookid, unitsellingprice) 
+                    SELECT %s, %s, book.bookid, book.price 
+                    FROM book 
+                    WHERE book.bookid = %s
+                """
+                cur.execute(query, (targetOrder, qtyToAdd, targetBook))
+                print(f"Added new line for Book {targetBook} to Order {targetOrder}.")
+
+            connection.commit()
+            setPageView("vieworders")
+
+        except Exception as error:
+            connection.rollback()
+            print(f"Database error: {error}")
+
+    submitButton = ttk.Button(addLineWindow, text="Add Order Line", command=processLineSubmission)
+    submitButton.pack(pady=25)
+
+def bookOrderHistoryReportTL(frame):
+    orderHistoryWindow = tk.Toplevel(frame)
+    orderHistoryWindow.title("Book Order History")
+    orderHistoryWindow.geometry("1000x650")
+    orderHistoryWindow.grab_set()
+
+    tk.Label(orderHistoryWindow, text="Book Order History Report", font=("Arial", 15)).pack(pady=10)
+
+    searchCriteriaFrame = tk.Frame(orderHistoryWindow)
+    searchCriteriaFrame.pack(pady=10)
+    
+    tk.Label(searchCriteriaFrame, text="Enter Book Identification Number:").pack(side="left", padx=5)
+    bookIdentificationEntry = ttk.Entry(searchCriteriaFrame)
+    bookIdentificationEntry.pack(side="left", padx=5)
+
+    columnIdentifiers = ("orderDate", "bookTitle", "standardPrice", "unitSellingPrice", "quantity", "totalOrderValue", "shopName")
+    orderHistoryTree = ttk.Treeview(orderHistoryWindow, columns=columnIdentifiers, show="headings")
+    
+    orderHistoryTree.heading("orderDate", text="Order Date")
+    orderHistoryTree.heading("bookTitle", text="Book Title")
+    orderHistoryTree.heading("standardPrice", text="Retail Price")
+    orderHistoryTree.heading("unitSellingPrice", text="Unit Sale Price")
+    orderHistoryTree.heading("quantity", text="Quantity")
+    orderHistoryTree.heading("totalOrderValue", text="Total Value")
+    orderHistoryTree.heading("shopName", text="Shop Name")
+
+    orderHistoryTree.column("orderDate", width=110, anchor="center")
+    orderHistoryTree.column("bookTitle", width=200, anchor="w")
+    orderHistoryTree.column("standardPrice", width=100, anchor="e")
+    orderHistoryTree.column("unitSellingPrice", width=100, anchor="e")
+    orderHistoryTree.column("quantity", width=80, anchor="center")
+    orderHistoryTree.column("totalOrderValue", width=110, anchor="e")
+    orderHistoryTree.column("shopName", width=150, anchor="w")
+
+    orderHistoryTree.pack(fill="both", expand=True, padx=20, pady=5)
+
+    summaryInformationFrame = tk.Frame(orderHistoryWindow, relief="groove", bd=2)
+    summaryInformationFrame.pack(fill="x", padx=20, pady=15)
+    
+    totalCopiesOrderedLabel = tk.Label(summaryInformationFrame, text="Total Copies Ordered: 0", font=("Arial", 15))
+    totalCopiesOrderedLabel.pack(side="left", padx=20)
+    
+    totalSellingValueLabel = tk.Label(summaryInformationFrame, text="Total Selling Value: £0.00", font=("Arial", 15))
+    totalSellingValueLabel.pack(side="right", padx=20)
+
+    def executeReportGeneration():
+        targetBookIdentification = bookIdentificationEntry.get()
+        if not targetBookIdentification:
+            return
+
+        for existingRow in orderHistoryTree.get_children():
+            orderHistoryTree.delete(existingRow)
+
+        try:
+
+            query = """
+                SELECT 
+                    shoporder.orderdate, 
+                    book.title, 
+                    book.price, 
+                    orderline.unitsellingprice, 
+                    orderline.quantity, 
+                    (orderline.unitsellingprice * orderline.quantity), 
+                    shop.name
+                FROM book
+                JOIN orderline ON book.bookid = orderline.bookid
+                JOIN shoporder ON orderline.shoporderid = shoporder.shoporderid
+                JOIN shop ON shoporder.shopid = shop.shopid
+                WHERE book.bookid = %s
+                ORDER BY shoporder.orderdate DESC
+            """
+            cur.execute(query, (targetBookIdentification,))
+            historyResultRows = cur.fetchall()
+
+            for currentRow in historyResultRows:
+                orderHistoryTree.insert("", tk.END, values=(
+                    currentRow[0], 
+                    currentRow[1], 
+                    f"£{currentRow[2]:,.2f}", 
+                    f"£{currentRow[3]:,.2f}", 
+                    currentRow[4], 
+                    f"£{currentRow[5]:,.2f}", 
+                    currentRow[6]
+                ))
+
+            query = """
+                SELECT SUM(quantity), SUM(unitsellingprice * quantity) 
+                FROM orderline 
+                WHERE bookid = %s
+            """
+            cur.execute(query, (targetBookIdentification,))
+            summaryDataResult = cur.fetchone()
+            
+            grandTotalCopies = summaryDataResult[0] if summaryDataResult[0] is not None else 0
+            grandTotalSellingValue = summaryDataResult[1] if summaryDataResult[1] is not None else 0.0
+            
+            totalCopiesOrderedLabel.config(text=f"Total Copies Ordered: {grandTotalCopies}")
+            totalSellingValueLabel.config(text=f"Total Selling Value: £{grandTotalSellingValue:,.2f}")
+
+        except Exception as databaseExecutionError:
+            connection.rollback()
+            print(f"Report Failure: {databaseExecutionError}")
+
+    generateReportButton = ttk.Button(searchCriteriaFrame, text="Generate History", command=executeReportGeneration)
+    generateReportButton.pack(side="left", padx=10)
+
+    closeReportButton = tk.Button(orderHistoryWindow, text="Close Report", command=orderHistoryWindow.destroy)
+    closeReportButton.pack(pady=10)
+
 # Defining helper functions
 
 def getDBconnection():
+    # Establishes connection to External Postgres Server
+    # Returns Connection object - can be used to create cursor and cause rollback
     try:
+        with open("pass.json") as connectionJson:
+            connectionInfo = json.load(connectionJson)
+
         connection = psycopg2.connect(
-            host="localhost",
-            database="postgres", # or your specific DB name
-            user="postgres",
-            password="pass123",
-            port=5432
+            host=connectionInfo["host"],
+            database=connectionInfo["database"],
+            user=connectionInfo["user"],
+            password=connectionInfo["password"],
+            port=connectionInfo["port"]
         )
         return connection
     except Exception as e:
-        print(f"Database connection failed: {e}")
+        print(f"connection failed, reason: {e}")
         return None
 
 def flushPage(frame):
@@ -596,7 +952,7 @@ pages = {
     "viewbooks" : packViewBooksPage,
     "vieworders" : packOrdersPage,
     "categories" : categoriesPage,
-    "publishers" : publishersPage,
+    "publishers" : shopAndPublishersPage,
     "staff" : staffPage
 }
 
@@ -610,6 +966,7 @@ def setPageView(pageName):
     pages[pageName.lower()]()
 
 # Startup actions 
+
 connection = getDBconnection()
 cur = connection.cursor()
 
