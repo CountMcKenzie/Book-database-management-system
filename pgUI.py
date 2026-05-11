@@ -265,7 +265,6 @@ def staffPage():
     repReportBtn = ttk.Button(btnFrame, command=lambda:generateSalesReportTL(viewFrame), text="Generate Rep Report")
     repReportBtn.pack(side="left", padx=5)
 
-
 class navButtons:
     def __init__(self, textContent, pageName):
         self.button = ttk.Button(navbar, text=textContent, command= lambda: setPageView(pageName))
@@ -280,7 +279,7 @@ def publisherReportTL(frame):
     reportWindow.title("Publisher Sales Report")
     reportWindow.geometry("950x600")
 
-    tk.Label(reportWindow, text="Monthly Sales Report by Publisher", font=("Arial", 12, "bold")).pack(pady=15)
+    tk.Label(reportWindow, text="Monthly Sales Report by Publisher", font=("Arial", 12)).pack(pady=15)
 
     inputFrame = tk.Frame(reportWindow)
     inputFrame.pack(pady=5)
@@ -918,10 +917,10 @@ def getDBconnection():
             password=connectionInfo["password"],
             port=connectionInfo["port"]
         )
-        return connection
+        return connection, connectionInfo["schema"]
     except Exception as e:
         print(f"connection failed, reason: {e}")
-        return None
+        return None, None
 
 def flushPage(frame):
     # frame -> Indicates what tkinter frame to clear
@@ -967,8 +966,10 @@ def setPageView(pageName):
 
 # Startup actions 
 
-connection = getDBconnection()
+connection, targetSchema = getDBconnection()
 cur = connection.cursor()
+cur.execute("SET search_path TO " + targetSchema)
+
 
 setPageView("viewBooks")
 
